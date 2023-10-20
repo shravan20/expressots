@@ -13,6 +13,8 @@ import { ServeFaviconOptions } from "./interfaces/serve-favicon.interface";
 import { FormatFn, OptionsMorgan } from "./interfaces/morgan.interface";
 import { RateLimitOptions } from "./interfaces/express-rate-limit.interface";
 import { OptionsHelmet } from "./interfaces/helmet.interface";
+import { Multer } from "./interfaces/multer.interface";
+import { SessionOptions } from "./interfaces/express-session.interface";
 
 /**
  * ExpressHandler Type
@@ -133,6 +135,14 @@ interface IMiddleware {
   addServeFavicon(path: string | Buffer, options?: ServeFaviconOptions): void;
 
   /**
+   * Add a middleware to enable express-session.
+   *
+   * @param options - Optional configuration options for Session.
+   *
+   */
+  addSession(options: SessionOptions): void;
+
+  /**
    * Configures the error handling middleware for the application.
    *
    * @param errorHandling - The Express error handler function that takes care of processing errors and formulating the response.
@@ -177,6 +187,14 @@ interface IMiddleware {
    * @returns The configuration options for Helmet middleware.
    */
   addHelmet(options?: OptionsHelmet): void;
+
+  /**
+   * Adds Multer middleware for handling multipart/form-data, typically used for file uploads.
+   *
+   * @param options - Optional configuration options for Multer.
+   */
+  setupMulter(options?: Multer.MulterOptions): void;
+
 }
 
 /**
@@ -355,6 +373,19 @@ class Middleware implements IMiddleware {
     }
   }
 
+  public setupMulter(options?: Multer.MulterOptions): void {
+    const multerMiddleware = middlewareResolver("multer", options);
+
+    const middlewareExist = this.middlewareExists("multer");
+
+    if (multerMiddleware && !middlewareExist) {
+      this.middlewarePipeline.push({
+        timestamp: new Date(),
+        middleware: multerMiddleware,
+      });
+    }
+  }
+
   /**
    * Adds a middleware to enhance security by setting various HTTP headers.
    *
@@ -364,6 +395,23 @@ class Middleware implements IMiddleware {
   addHelmet(options?: OptionsHelmet): void {
     const middleware = middlewareResolver("helmet", options);
     const middlewareExist = this.middlewareExists("helmet");
+    if (middleware && !middlewareExist) {
+      this.middlewarePipeline.push({
+        timestamp: new Date(),
+        middleware,
+      });
+    }
+  }
+
+  /**
+   * Add a middleware to enable express-session.
+   *
+   * @param options - Optional configuration options for Session.
+   *
+   */
+  addSession(options: SessionOptions): void {
+    const middleware = middlewareResolver("session", options);
+    const middlewareExist = this.middlewareExists("session");
     if (middleware && !middlewareExist) {
       this.middlewarePipeline.push({
         timestamp: new Date(),
